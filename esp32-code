@@ -1,0 +1,87 @@
+/* * ESP32 Trippel Fläktstyrning (Arduino Core 3.x.x)
+ * Styrning via Serial Monitor: 
+ * Skriv "1:värde", "2:värde", "3:värde" eller "0:värde" för ALLA.
+ * Exempel: "1:85" sätter fläkt 1 till 85%. "0:100" sätter alla till 100%.
+ */
+
+// Definitioner för GPIO-pinnar (Anpassa efter dina fysiska kopplingar)
+const int fan1Pin = 26;
+const int fan2Pin = 25;
+const int fan3Pin = 17;
+
+// PWM-inställningar
+const int frequency = 25000; // 25kHz standard
+const int resolution = 8;    // 0-255
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+  Serial.println("\n--- ESP32 Trippel Fläktstyrning Startar ---");
+  Serial.println("Kommandoformat: 'FläktNummer:Procent'");
+  Serial.println("Exempel: '1:50', '2:75', '3:100' eller '0:80' (för alla)");
+
+  // Initiera alla tre fläktkanaler
+  int pins[] = {fan1Pin, fan2Pin, fan3Pin};
+  for (int i = 0; i < 3; i++) {
+    if (ledcAttach(pins[i], frequency, resolution)) {
+      Serial.printf("Fläkt %d initierad på GPIO %d\n", i + 1, pins[i]);
+      ledcWrite(pins[i], 0); // Startsekvens: 100% fart (Inverterad NPN)
+    }
+  }
+
+  Serial.println("Status: Alla startade på 100%. Väntar 5 sek...");
+  delay(5000);
+
+  // Sänk alla till 50% som default
+  ledcWrite(fan1Pin, 127);
+  ledcWrite(fan2Pin, 127);
+  ledcWrite(fan3Pin, 127);
+  Serial.println("Status: Sänkt till 50%. Redo för kommandon.");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    // Läs fläktval (0, 1, 2 eller 3)
+    int fanChoice = Serial.parseInt(); 
+    
+    // Vänta på kolonet
+    if (Serial.read() == ':') {
+      int percent = Serial.parseInt();
+
+      if (percent >= 0 && percent <= 100) {
+        // Mappa procent till 0-255 (Inverterad: 0% = 255, 100% = 0)
+        // OBS: Om du vill ha 0% = 0, ändra map-raden nedan till (percent, 0, 100, 0, 255)
+        int duty = map(percent, 0, 100, 0, 255);
+        
+        switch(fanChoice) {
+          case 0: // ALLA
+            ledcWrite(fan1Pin, duty);
+            ledcWrite(fan2Pin, duty);
+            ledcWrite(fan3Pin, duty);
+            Serial.printf("ALLA fläktar satta till %d%%\n", percent);
+            break;
+          case 1:
+            ledcWrite(fan1Pin, duty);
+            Serial.printf("Fläkt 1 satt till %d%%\n", percent);
+            break;
+          case 2:
+            ledcWrite(fan2Pin, duty);
+            Serial.printf("Fläkt 2 satt till %d%%\n", percent);
+            break;
+          case 3:
+            ledcWrite(fan3Pin, duty);
+            Serial.printf("Fläkt 3 satt till %d%%\n", percent);
+            break;
+          default:
+            Serial.println("Fel: Välj fläkt 1, 2, 3 eller 0 för alla.");
+            break;
+        }
+      } else {
+        Serial.println("Fel: Ange procent mellan 0-100.");
+      }
+    }
+
+    // Rensa seriella bufferten
+    while(Serial.available() > 0) Serial.read();
+  }
+}
