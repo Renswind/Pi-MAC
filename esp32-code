@@ -1,10 +1,4 @@
-/* * ESP32 Trippel Fläktstyrning (Arduino Core 3.x.x)
- * Styrning via Serial Monitor: 
- * Skriv "1:värde", "2:värde", "3:värde" eller "0:värde" för ALLA.
- * Exempel: "1:85" sätter fläkt 1 till 85%. "0:100" sätter alla till 100%.
- */
-
-// Definitioner för GPIO-pinnar (Anpassa efter dina fysiska kopplingar)
+// Definitioner för GPIO-pinnar 
 const int fan1Pin = 26;
 const int fan2Pin = 25;
 const int fan3Pin = 17;
@@ -16,27 +10,28 @@ const int resolution = 8;    // 0-255
 void setup() {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("\n--- ESP32 Trippel Fläktstyrning Startar ---");
+  //instruktioner mot skärmen
+  Serial.println("\n--- ESP32 Fläktstyrning Startar ---");
   Serial.println("Kommandoformat: 'FläktNummer:Procent'");
   Serial.println("Exempel: '1:50', '2:75', '3:100' eller '0:80' (för alla)");
 
-  // Initiera alla tre fläktkanaler
+  // Initiera alla tre fläktar.
   int pins[] = {fan1Pin, fan2Pin, fan3Pin};
   for (int i = 0; i < 3; i++) {
     if (ledcAttach(pins[i], frequency, resolution)) {
       Serial.printf("Fläkt %d initierad på GPIO %d\n", i + 1, pins[i]);
-      ledcWrite(pins[i], 0); // Startsekvens: 100% fart (Inverterad NPN)
+      ledcWrite(pins[i], 0); // Startsekvens: 100% fart.
     }
   }
 
   Serial.println("Status: Alla startade på 100%. Väntar 5 sek...");
   delay(5000);
 
-  // Sänk alla till 50% som default
+  // Sänk alla till 50%
   ledcWrite(fan1Pin, 127);
   ledcWrite(fan2Pin, 127);
   ledcWrite(fan3Pin, 127);
-  Serial.println("Status: Sänkt till 50%. Redo för kommandon.");
+  Serial.println("Status: 50%. Redo för kommandon.");
 }
 
 void loop() {
@@ -50,7 +45,6 @@ void loop() {
 
       if (percent >= 0 && percent <= 100) {
         // Mappa procent till 0-255 (Inverterad: 0% = 255, 100% = 0)
-        // OBS: Om du vill ha 0% = 0, ändra map-raden nedan till (percent, 0, 100, 0, 255)
         int duty = map(percent, 0, 100, 0, 255);
         
         switch(fanChoice) {
@@ -81,7 +75,7 @@ void loop() {
       }
     }
 
-    // Rensa seriella bufferten
+    // Rensa seriella bufferten för säkerhets skull.
     while(Serial.available() > 0) Serial.read();
   }
 }
